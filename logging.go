@@ -700,6 +700,7 @@ type defaultCustomLog struct {
 func newDefaultProductionLog() (*defaultCustomLog, error) {
 	cl := new(CustomLog)
 	cl.writerOpener = StderrWriter{}
+
 	var err error
 	cl.writer, err = cl.writerOpener.OpenWriter()
 	if err != nil {
