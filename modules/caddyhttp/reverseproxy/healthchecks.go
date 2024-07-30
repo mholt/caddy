@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"time"
 
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 
 	"github.com/caddyserver/caddy/v2"
@@ -403,6 +404,12 @@ func (h *Handler) doActiveHealthCheck(dialInfo DialInfo, hostAddr string, networ
 	ctx = context.WithValue(ctx, caddyhttp.VarsCtxKey, map[string]any{
 		dialInfoVarKey: dialInfo,
 	})
+
+	tr := otel.Tracer("reverseproxy")
+
+	ctx, span := tr.Start(ctx, "healthcheck")
+	defer span.End()
+
 	req, err := http.NewRequestWithContext(ctx, h.HealthChecks.Active.Method, u.String(), nil)
 	if err != nil {
 		return fmt.Errorf("making request: %v", err)
