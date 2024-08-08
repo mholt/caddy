@@ -25,9 +25,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/caddyserver/caddy/v2"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+	"github.com/caddyserver/caddy/v2"
 )
 
 func init() {
@@ -102,7 +103,7 @@ func (hl HTTPLoader) LoadConfig(ctx caddy.Context) ([]byte, error) {
 
 	// ctx, span := tr.Start(ctx, "httploader")
 	// defer span.End()
-	
+
 	url := repl.ReplaceAll(hl.URL, "")
 	req, err := http.NewRequestWithContext(ctx, method, url, nil)
 	if err != nil {
