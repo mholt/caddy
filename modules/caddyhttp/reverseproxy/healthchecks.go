@@ -25,6 +25,7 @@ import (
 	"regexp"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace"
@@ -96,6 +97,9 @@ type ActiveHealthChecks struct {
 
 	// The HTTP method to use for health checks (default "GET").
 	Method string `json:"method,omitempty"`
+
+	// The body to send with the health check request.
+	Body string `json:"body,omitempty"`
 
 	// Whether to follow HTTP redirects in response to active health checks (default off).
 	FollowRedirects bool `json:"follow_redirects,omitempty"`
@@ -405,6 +409,16 @@ func (h *Handler) doActiveHealthCheck(dialInfo DialInfo, hostAddr string, networ
 		u.Path = h.HealthChecks.Active.Path
 	}
 
+	// replacer used for both body and headers. Only globals (env vars, system info, etc.) are available
+	repl := caddy.NewReplacer()
+
+	// if body is provided, create a reader for it, otherwise nil
+	var requestBody io.Reader
+	if h.HealthChecks.Active.Body != "" {
+		// set body, using replacer
+		requestBody = strings.NewReader(repl.ReplaceAll(h.HealthChecks.Active.Body, ""))
+	}
+
 	// attach dialing information to this request, as well as context values that
 	// may be expected by handlers of this request
 	ctx := h.ctx.Context
@@ -418,15 +432,14 @@ func (h *Handler) doActiveHealthCheck(dialInfo DialInfo, hostAddr string, networ
 	ctx, span := tr.Start(ctx, "healthcheck")
 	defer span.End()
 
-	req, err := http.NewRequestWithContext(ctx, h.HealthChecks.Active.Method, u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, h.HealthChecks.Active.Method, u.String(), requestBody)
 	if err != nil {
 		return fmt.Errorf("making request: %v", err)
 	}
 	ctx = context.WithValue(ctx, caddyhttp.OriginalRequestCtxKey, *req)
 	req = req.WithContext(ctx)
 
-	// set headers, using a replacer with only globals (env vars, system info, etc.)
-	repl := caddy.NewReplacer()
+	// set headers, using replacer
 	repl.Set("http.reverse_proxy.active.target_upstream", networkAddr)
 	for key, vals := range h.HealthChecks.Active.Headers {
 		key = repl.ReplaceAll(key, "")
