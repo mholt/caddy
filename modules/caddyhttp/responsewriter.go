@@ -21,6 +21,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"sync"
 )
 
 // ResponseWriterWrapper wraps an underlying ResponseWriter and
@@ -71,6 +72,7 @@ type responseRecorder struct {
 	wroteHeader  bool
 	stream       bool
 
+	headerMu *sync.Mutex
 	readSize *int
 }
 
@@ -139,6 +141,7 @@ func NewResponseRecorder(w http.ResponseWriter, buf *bytes.Buffer, shouldBuffer 
 		ResponseWriterWrapper: &ResponseWriterWrapper{ResponseWriter: w},
 		buf:                   buf,
 		shouldBuffer:          shouldBuffer,
+		headerMu:              &sync.Mutex{},
 	}
 }
 
@@ -146,6 +149,8 @@ func NewResponseRecorder(w http.ResponseWriter, buf *bytes.Buffer, shouldBuffer 
 // ResponseWriter unless the response is to be buffered instead.
 // 1xx responses are never buffered.
 func (rr *responseRecorder) WriteHeader(statusCode int) {
+	rr.headerMu.Lock() // TODO: temporary just to test a hypothesis
+	defer rr.headerMu.Unlock()
 	if rr.wroteHeader {
 		return
 	}
