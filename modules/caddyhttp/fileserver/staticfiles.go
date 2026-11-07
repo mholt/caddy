@@ -136,6 +136,9 @@ type FileServer struct {
 	// platform, because case-insensitive filesystems resolve differently
 	// spelled request paths to the same file. On case-sensitive filesystems,
 	// this also hides files whose names differ from a hidden one only by case.
+	// Symlinks and hard links can still reach hidden files from elsewhere,
+	// so hide should not be treated as a security boundary for sensitive
+	// paths.
 	Hide []string `json:"hide,omitempty"`
 
 	// The names of files to try as index files if a folder is requested.
